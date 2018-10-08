@@ -211,51 +211,51 @@ For all steps implying an operation on the database, whether a read or a write, 
 
 ### Sign up
 1. Client: **obtain from User** (*username*; *email address*). (For example, from a web form. There can be more information of course, but that's outside the scope of this document)
-1. Client: **send to Server** (*username*; *email address*). 
-1. Server: perform a database cleanup.
-1. Server: check if either *username* or *email address* is already used. (For example, perfom a `SELECT COUNT(username) FROM credentials WHERE username='<username>' OR email_address='<email address>';` query).
-1. Server: if either is already used, **return to Client** an error.
-1. Server: otherwise obtain a *salt*: cryptographically secure random binary data of the chosen length (in the [Setting up](#setting-up) section).
+2. Client: **send to Server** (*username*; *email address*). 
+3. Server: perform a database cleanup.
+4. Server: check if either *username* or *email address* is already used. (For example, perfom a `SELECT COUNT(username) FROM credentials WHERE username='<username>' OR email_address='<email address>';` query).
+5. Server: if either is already used, **return to Client** an error.
+6. Server: otherwise obtain a *salt*: cryptographically secure random binary data of the chosen length (in the [Setting up](#setting-up) section).
 Obtaining a salt is implementation dependent. For example, in PHP you could use the `openssl_random_pseudo_bytes()` function.
 Once you have a candidate salt, you can check for its uniqueness in the database, for example with a `INSERT INTO salts SET salt VALUES (<candidate salt>) ON DUPLICATE KEY UPDATE salt=salt;` query. This will both check for uniqueness and save it, turning this into an atomic operation.<br>
 Repeat until the server has obtained a unique *salt*.<br>
-1. Server: **return to client** (*salt*).
-1. Client: **obtain from User** (*password*), or instead, optionally, (*password*;*question*;*answer*).
+7. Server: **return to client** (*salt*).
+8. Client: **obtain from User** (*password*), or instead, optionally, (*password*;*question*;*answer*).
   - Note that at this stage asking the user to confirm their password is not needed, because they will eventually have to enter it again at a later stage.
   - For the same reason, if the optional question/answer challenge is implemented, confirming the answer is not needed as well.
   - The username and password can be obtained from the same form, but ideally the client software should ask for the password separately, since it reduces opportunities for an attacker to read it.
-1. Client: use the password hashing function (PHF) to hash the password and create *encrypted password*, for example with `<encrypted password> = Argon2d(<password>, <salt>, UUID, Additional Data, <password settings>);`. Remember that additional data has been decided during the initial setting up phase. The rationale is as follow:
+9. Client: use the password hashing function (PHF) to hash the password and create *encrypted password*, for example with `<encrypted password> = Argon2d(<password>, <salt>, UUID, Additional Data, <password settings>);`. Remember that additional data has been decided during the initial setting up phase. The rationale is as follow:
   - Using a unique salt, we ensure that all encrypted passwords are unique, even if two users enter the same password.
   - Using a cryptographically secure random salt of sufficient size ensures the password cannot be reconstructed from the hash, providing we trust Argon2 and the source of the salt.
   - Using a UUID ensures encrypted passwords are unique even between systems that don't know about each other (and therefore cannot check uniqueness of the salt).
   - Using additional data to indicate this is a password hash, we ensure that if the system uses the same salt and UUID for other purposes, the resulting encrypted hash will be different than the encrypted password.
-1. Client: optionally use the PHF to hash the answer ans create *encrypted answer*, for example with `<encrypted answer> = Argon2d(<password>, <salt>, UUID, Additional Data For Answer, <answer settings>);`. Note that additional data for the answer must be different than for the password.
-1. Client: **send to Server** (*username*;*email address*;*salt*;*encrypted password*;*password settings*) or instead, optionally (*username*;*email address*;*salt*;*encrypted password*;*password settings*;question;*encrypted answer*;*answer settings*).
-1. Server: Create a *transaction code* with the chosen validity duration, and calculate the *transaction end* date at which the sign up request is rejected.
+10. Client: optionally use the PHF to hash the answer ans create *encrypted answer*, for example with `<encrypted answer> = Argon2d(<password>, <salt>, UUID, Additional Data For Answer, <answer settings>);`. Note that additional data for the answer must be different than for the password.
+11. Client: **send to Server** (*username*;*email address*;*salt*;*encrypted password*;*password settings*) or instead, optionally (*username*;*email address*;*salt*;*encrypted password*;*password settings*;question;*encrypted answer*;*answer settings*).
+12. Server: Create a *transaction code* with the chosen validity duration, and calculate the *transaction end* date at which the sign up request is rejected.
   - The transaction code must sufficiently unpredictable that an attacker cannot generate fake codes. If they could, they would be able to sign up with a fake address they don't control, then generate a link and try to activate the account with it. As long as a transaction code cannot be generated by attackers, the system is safe.
   - For this purpose, it is enough to use random data and mix it with the username, which is a known unique value (assuming the operation described in the next step is successful, but that's the point).
-  - The suggested approach is create a string of N digits obtained from a random number generator (for example `openssl_random_pseudo_bytes()` in the case of PHP) where N is the length chosen during setup, append the username to it and hash the result. Since we are using Argon2 for password hashing, a logical choice is BLAKE2.  
-1. Server: add credential information, the *transaction code* and *transaction end* to the credential database. For example with a `INSERT INTO credentials(username, email_address, salt, encrypted_password, password_settings, active, transaction_code, transaction_end) VALUES (<username>, <email address>, <salt>, <encrypted password>, <password setting>, 0, <transaction code>, <transaction end>);` query (add *question*, *encrypted answer* and *answer settings* as appropriate). This query can fail if two users try to sign up with the same username (or email address, but that's unlikely) roughly at the same time.
-1. Server: **return to Client** success or failure.
+  - The suggested approach is create a string of N digits obtained from a random number generator (for example `openssl_random_pseudo_bytes()` in the case of PHP) where N is the length chosen during setup, append the username to it and hash the result. Since we are using Argon2 for password hashing, a logical choice is BLAKE2.
+13. Server: add credential information, the *transaction code* and *transaction end* to the credential database. For example with a `INSERT INTO credentials(username, email_address, salt, encrypted_password, password_settings, active, transaction_code, transaction_end) VALUES (<username>, <email address>, <salt>, <encrypted password>, <password setting>, 0, <transaction code>, <transaction end>);` query (add *question*, *encrypted answer* and *answer settings* as appropriate). This query can fail if two users try to sign up with the same username (or email address, but that's unlikely) roughly at the same time.
+14. Server: **return to Client** success or failure.
   - In case of failure, the client could just apologize, repeat the process starting from step 1, and then tell one of the users that their username is now taken.
   - In case of success, display a message telling the user an email has been sent with a link, and clicking the link is required to finish signing up. Also tell the user the link is valid for a limited time. 
-1. Server: in case of success, send an email to *email address* with some welcome message and a link to some activation page.
+15. Server: in case of success, send an email to *email address* with some welcome message and a link to some activation page.
   - The link has two purposes: start the client software, and provide *transaction code* and *username* to the client. How this is performed varies widely between implementation, but in what follow we will assume *transaction code* is now known to the client, and that we now have a proof that the user controls the provided email address.
   - Specifically, with the link the client software must be able to run knowing *username*, *transaction code*, *salt* and *password settings* (and, optionally, *answer settings* as well).
   - Note that since the process has no control over how many times the user clicks the link, if they do it more than once there should be some ways to tell them the link is longer valid.
-1. Client: **obtain from User** (*password*), or instead, optionally, display the question part of the challenge and obtain (*password*;*answer*).
-1. Client: use the PHF to hash the password and create *encrypted password*. Optionally, also create *encrypted answer*.
-1. Client: **send to Server** (*username*;*transaction code*;*encrypted password*;*password settings*) or (*username*;*transaction code*;*encrypted password*;*encrypted answer*;*answer settings*).
-1. Server: Perform a database cleanup.
-1. Server: complete the signup by matching the request with the previous record in the database. The provided information has the following requirements:
+16. Client: **obtain from User** (*password*), or instead, optionally, display the question part of the challenge and obtain (*password*;*answer*).
+17. Client: use the PHF to hash the password and create *encrypted password*. Optionally, also create *encrypted answer*.
+18. Client: **send to Server** (*username*;*transaction code*;*encrypted password*;*password settings*) or (*username*;*transaction code*;*encrypted password*;*encrypted answer*;*answer settings*).
+19. Server: Perform a database cleanup.
+20. Server: complete the signup by matching the request with the previous record in the database. The provided information has the following requirements:
   - *username*, *transaction code*, *encrypted password*, *password settings* and optionally *encrypted answer* and *answer settings* must match.
   - The active flag must be initially 0, to prevent activating more than once.
   - The current time must be lesser than the *transaction end* date.
   - A successful activation must erase *transaction code* and *transaction end* from the database:  We don't want to keep outdated transaction codes.
   - Example of a database operation: `UPDATE credentials SET active = 1, transaction_code = NULL, transaction_end = NULL WHERE username = '<username>' AND password = '<encrypted_password>' AND password_settings = '<password settings>' AND active = 0 AND transaction_code = '<transaction code>' AND NOW() < transaction_end;`
   - Same example with the optional question/answer challenge implemented: `UPDATE credentials SET active = 1, transaction_code = NULL, transaction_end = NULL WHERE username = '<username>' AND password = '<encrypted_password>' AND password_settings = '<password settings>' AND answer = '<encrypted answer>' AND answer_settings = '<answer settings>' AND active = 0 AND transaction_code = '<transaction code>' AND NOW() < transaction_end;`
-1. Server: **return to Client** success or failure.
-1. Client: in case of success, notify the user of their successful sign up. In case of failure, there are several possibilities, like a password or answer that doesn't match, but also a credential already activated, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
+21. Server: **return to Client** success or failure.
+22. Client: in case of success, notify the user of their successful sign up. In case of failure, there are several possibilities, like a password or answer that doesn't match, but also a credential already activated, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
 
 ### Sign in
 
@@ -266,7 +266,7 @@ Repeat until the server has obtained a unique *salt*.<br>
 5. Server: **return to client** either success and (*salt*; *password settings*), or failure.
 6. Client: in case of failure, return to the first step.
 7. Client: otherwise, **obtain from User** (*password*). Similarly to sign up, the username and password could be in the same form, but ideally the client software asks for the password separately. 
-8. Client: encrypt the password, using the user-provided value and server-provided salt and settings (see step 9 of sign up).
+8. Client: encrypt the password, using the user-provided value and server-provided salt and settings (see step 9 of [sign up](#sign-up)).
 9. Client: **send to Server** (*identifier*; *encrypted password*; *password settings*). 
 10. Server: check if the credential is a match for any active credential, by username or email address. If it is, grant access. (For example, perfom a `SELECT username, salt, password_settings, ... FROM credentials WHERE active = 1 AND password = '<encrypted password>' AND password_settings = '<password settings>' AND (username = '<identifier>' OR email_address = '<identifier>');` query).
   - How access is granted is not specified here, it depends on how the system will proceed from there. Typically, the server would generate a session ID that allows to read/write other databases.  
@@ -286,7 +286,7 @@ This section is specific to changing the password, but considerations stated abo
 1. Client: **obtain from User** (*password*; *new password*).
   - Since there will be no other opportunities for the user to confirm the new password, it's a good idea to ask them to type it twice at this stage, and verify the two versions are equal.
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-2. Client: encrypt the old and new passwords, using user-provided values (see step 9 of sign up).
+2. Client: encrypt the old and new passwords, using user-provided values (see step 9 of [sign up](#sign-up)).
   - This section doesn't cover it, but if for some reason password settings had to be changed, it would be the right time to do it. In what follows, we will therefore consider *password settings* and *new password settings* to be different. In practice, the client software will just reuse old settings for the new password. 
 3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *encrypted new password*; *new password settings*). 
 4. Server: perform a conditional replacement of the old password and old password settings with the new ones.
@@ -303,7 +303,7 @@ See the [change password](#change-password) section above for considerations reg
 1. Client: **obtain from User** (*password*; *new email address*).
   - A confirmation email will be sent to the new address. Therefore, it is not necessary to ask the user to confirm the address in other ways, such as entering it twice.
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-2. Client: encrypt the password, using the user-provided value (see step 9 of sign up).
+2. Client: encrypt the password, using the user-provided value (see step 9 of [sign up](#sign-up)).
 3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *new email address*). 
 4. Server: perform a conditional replacement of the email address with the new one.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
@@ -317,37 +317,37 @@ See the [change password](#change-password) section above for considerations reg
 
 ### Change username
 
-See the [change password](#change_password) section above for considerations regarding changing credential information.
+See the [change password](#change-password) section above for considerations regarding changing credential information.
 
-1. Client: **obtain from User** (*password*;*new username*).
+1. Client: **obtain from User** (*password*; *new username*).
   - Since the new username can be displayed in plain text and will take effect immediately, there is no need to confirm it, for example by entering it twice.
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-1. Client: encrypt the password, using the user-provided value (see step 9 of sign up).
-1. Client: **send to Server** (*username*;*encrypted password*;*password settings*;*new username*). 
-1. Server: perform a conditional replacement of the username with the new one.
+2. Client: encrypt the password, using the user-provided value (see step 9 of [sign up](#sign-up)).
+3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *new username*). 
+4. Server: perform a conditional replacement of the username with the new one.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
   - The credential must be active.
   - This is done with a query similar to `UPDATE credentials SET username = '<new username>' WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;`.
-1. Server: **return to client** success or failure.
-  - Failure can be, for example, if the current password doesn't match what's in the database.
+5. Server: **return to client** success or failure.
+  - Failure can be, for example, if the current password doesn't match the database credential.
   - Failure can also be that the new username is taken. The server should, if possible, return a specific error for this situation so the client software can display the appropriate message.
 
 ### Change question/answer challenge (optional)
 
-See the [change password](#change_password) section above for considerations regarding changing credential information.
+See the [change password](#change-password) section above for considerations regarding changing credential information.
 This section is optional and obviously applies only if the question/answer chanllenge is implemented. 
 
-1. Client: **obtain from User** (*password*;*new question*;*new answer*).
+1. Client: **obtain from User** (*password*; *new question*; *new answer*).
   - Since there will be no other opportunities for the user to confirm the new answer, it's a good idea to ask them to type it twice at this stage, and verify the two versions are equal.
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-1. Client: encrypt the password, using the user-provided values (see step 9 of sign up).
-1. Client: **send to Server** (*username*;*encrypted password*;*password settings*;*new question*;*encrypted new answer*;*new answer settings*). 
-1. Server: perform a conditional replacement of the question and answer with the new ones.
+2. Client: encrypt the password and new answer, using user-provided values (see step 9 of [sign up](#sign-up)).
+3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *new question*; *encrypted new answer*; *new answer settings*). 
+4. Server: perform a conditional replacement of the question and answer with the new ones.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
   - The credential must be active.
   - This is done with a query similar to `UPDATE credentials SET question = '<new question>', answer = '<encrypted new answer>', answer_settings = '<new answer settings>' WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;`.
-1. Server: **return to client** success or failure.
-  - Failure can be, for example, if the current password doesn't match what's in the database.
+5. Server: **return to client** success or failure.
+  - Failure can be, for example, if the current password doesn't match the database credential.
 
 ### Recovery
 
@@ -356,32 +356,32 @@ Recovering a credential for which the password has been lost or forgotten is don
 If the optional question/answer challenge is implemented, they will also have to answer the question in the credential associated to the email address. The new password will be applied only if the answer is valid.
   
 1. Client: **obtain from User** (*email address*). Note that the user isn't signed in at this time, and the client software knows nothing about them.
-1. Client: **send to Server** (*email address*).
-1. Server: Create an *transaction code* with the chosen validity duration, and calculate the *transaction end* date at which the recovery request is rejected. See step 12 of the sign up section for details about the transaction code.
-1. Server: update the *transaction code* and *transaction end* date in the credential database. For example with a `UPDATE credentials SET transaction_code = '<transaction_code>', transaction_end = '<transaction_end>' WHERE email_address = '<email address>' AND active = 1 AND (NOT (question IS NULL));` query.
+2. Client: **send to Server** (*email address*).
+3. Server: create a *transaction code* with the chosen validity duration, and calculate the *transaction end* date at which the recovery request will be rejected. See step 12 of the [sign up](#sign-up) section for details about the transaction code.
+4. Server: update the *transaction code* and *transaction end* date in the credential database. For example with a `UPDATE credentials SET transaction_code = '<transaction_code>', transaction_end = '<transaction_end>' WHERE email_address = '<email address>' AND active = 1;` query, or, if the optional question/answer challenge is implemented, the `UPDATE credentials SET transaction_code = '<transaction_code>', transaction_end = '<transaction_end>' WHERE email_address = '<email address>' AND active = 1 AND (NOT (question IS NULL));` query.
   - This query can fail if either the email address doesn't exist, or the question is empty.
   - If the question is empty, it means the user explicitely denied the possibility of recovery.
-1. Server: **return to Client** success or failure.
-1. Client: display the result.
+5. Server: **return to Client** success or failure.
+6. Client: display the result.
   - In case of failure, the client should be able to distinguish between a bad email address or an empty question, and display the corresponding message.
   - In case of success, display a message telling the user an email has been sent with a link, and clicking the link is required to finish recovering. Also tell the user the link is valid for a limited time. 
-1. Server: in case of success, send an email to *email address* with some warning message and a link to some recovery page.
-  - The link has two purposes: start the client software, and provide *transaction code*, *username*, *salt*, *question* and *answer settings* to the client. How this is performed varies widely between implementation, but in what follow we will assume *transaction code* is now known to the client, and that we now have a proof that the user controls the provided email address.
+7. Server: in case of success, send an email to *email address* with some warning message and a link to some recovery page.
+  - The link has two purposes: start the client software, and provide *transaction code*, *username*, *salt*, and optionally *question* and *answer settings* to the client. How this is performed varies widely between implementation, but in what follow we will assume *transaction code* is now known to the client, and that we now have a proof that the user controls the provided email address.
   - Note that since the process has no control over how many times the user clicks the link, if they do it more than once there should be some ways to tell them the link is longer valid.
-1. Client: display the question, ask for the answer and a new password.
-1. Client: **obtain from User** (*answer*;*new password*).
-1. Client: use the PHF to hash the answer and new password and create *encrypted answer* and *encrypted new password*.
-1. Client: **send to Server** (*username*;*transaction code*;*encrypted answer*;*answer settings*;*encrypted new password*;*new password settings*).
-1. Server: perform a database cleanup.
-1. Server: complete the recovery by looking for a match of the request in the database. The provided information has the following requirements:
-  - *username*, *transaction code*, *encrypted answer* and *answer settings* must match.
+8. Client: ask for a new password. If the optional question/answer challenge is used, also display the question and ask for the answer.
+9. Client: **obtain from User** (*new password*) or (*new password*; *answer*).
+10. Client: use the PHF to hash the new password and the optional answer, and create *encrypted new password* and *encrypted answer*.
+11. Client: **send to Server** (*username*; *transaction code*; *encrypted new password*; *new password settings*) or (*username*; *transaction code*; *encrypted new password*; *new password settings*; *encrypted answer*; *answer settings*).
+12. Server: perform a database cleanup.
+13. Server: complete the recovery by looking for a match of the request in the database. The provided information has the following requirements:
+  - *username*, *transaction code*, and optionally *encrypted answer* and *answer settings* must match.
   - The active flag must be 1.
   - The current time must be lesser than the *transaction end* date.
   - A successful recovery must erase *transaction code* and *transaction end* from the database.
   - The delete date field should also be cleared, to avoid the corner case where a recovery and deletion happen at the same time. 
-  - Example of a database operation: `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>', transaction_code = NULL, transaction_end = NULL, delete_date = NULL WHERE username = '<username>' AND answer = '<encrypted answer>' AND answer_settings = '<answer settings>' AND active = 1 AND (NOT (question is NULL)) AND transaction_code = '<transaction_code>' AND (NOW() < transaction_end);`
-1. Server: **return to Client** success or failure.
-1. Client: in case of success, notify the user of their successful recovery. In case of failure, there are several possibilities, like an answer that doesn't match, but also a credential not activated yet, activated more than once, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
+  - Example of a database operation: `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>', transaction_code = NULL, transaction_end = NULL, delete_date = NULL WHERE username = '<username>' AND active = 1 AND transaction_code = '<transaction_code>' AND (NOW() < transaction_end);`. If the optional question/answer challenge is implemented, the query would be `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>', transaction_code = NULL, transaction_end = NULL, delete_date = NULL WHERE username = '<username>' AND answer = '<encrypted answer>' AND answer_settings = '<answer settings>' AND (NOT (question is NULL)) AND active = 1 AND transaction_code = '<transaction_code>' AND (NOW() < transaction_end);`.
+14. Server: **return to Client** success or failure.
+15. Client: in case of success, notify the user of their successful recovery. In case of failure, there are several possibilities, like an answer that doesn't match, but also a credential not activated yet, activated more than once, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
 
 ### Sign out
 
@@ -393,18 +393,18 @@ As noted in the [overview](#overview), deleting the account isn't instantaneous.
 
 1. Client: **obtain from User** (*password*).
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-1. Client: encrypt the password using the user-provided value (see step 9 of sign up).
-1. Client: **send to Server** (*username*;*encrypted password*;*password settings*). 
-1. Server: read the email address corresponding to this user, and tag the credential for deletion.
+2. Client: encrypt the password using the user-provided value (see step 9 of [sign up](#sign-up)).
+3. Client: **send to Server** (*username*; *encrypted password*; *password settings*). 
+4. Server: read the email address corresponding to this user, and tag the credential for deletion.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
   - The credential must be active.
   - The email address can be obtained for example with a `SELECT email_address WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;` query.
   - Tagging the credential for deletion can be done for example with a `UPDATE credentials SET delete_date = <delete date> WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;` query.
-1. Server: in case of success, send a warning message at the email address.
-1. Server: **return to client** success or failure.
-  - Failure can be, for example, if the current password doesn't match what's in the database.
-1. Server: perform all operations corresponding to a sign out. 
-1. Client: perform all operations corresponding to a sign out. 
-1. Client: display the result.
+5. Server: in case of success, send a warning message at the email address.
+6. Server: **return to client** success or failure.
+  - Failure can be, for example, if the current password doesn't match the database credential.
+7. Server: perform all operations corresponding to a sign out. 
+8. Client: perform all operations corresponding to a sign out. 
+9. Client: display the result.
   - In case of failure, the reason.
   - In case of success, tell the user that they have been signed out, and that if they sign in again at any time during the grace period, deleting the account will be automatically canceled.
