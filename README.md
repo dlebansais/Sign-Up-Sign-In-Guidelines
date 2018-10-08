@@ -172,8 +172,8 @@ The database will be prepared to hold the following information:
 
 | Field Meaning | Field name in pseudo code | Note |
 | --- | --- |--- |
-| The username | `username ` | set as unique, if the database allows it |
-| The email address | `email_address` | set as unique, if the database allows it |
+| The username | `username ` | Set as unique, if the database allows it |
+| The email address | `email_address` | Set as unique, if the database allows it |
 | The salt | `salt` | |
 | The encrypted password | `password` | |
 | The password settings | `password_settings` | |
@@ -181,17 +181,17 @@ The database will be prepared to hold the following information:
 | A transaction code field | `transaction_code` | |
 | A transaction timeout field | `transaction_timeout` | |
 | A delete timeout field | `delete_timeout` | |
-| The question | `question` | optional |
-| The encrypted secret answer | `answer` | optional |
-| The answer settings | `answer_settings` | optional |
+| The question | `question` | Optional |
+| The encrypted secret answer | `answer` | Optional |
+| The answer settings | `answer_settings` | Optional |
 
 The term *active* comes from the concept of account activation.
 
 - The salts table, recording
-- 
+
 | Field Meaning  | Field name in pseudo code | Note |
 | --- | --- |--- |
-| A salt as binary data | salt | set as unique, if the database allows it |
+| A salt as binary data | `salt` | Set as unique, if the database allows it |
     
 ### Cleanup
 In what follows, the server will sometimes "perform a database cleanup" step. This step is necessary, and executed at the specified time, only if the server doesn't use a separate cleanup thread. This is the case if for instance the server is completely implemented in PHP, because the server code is executed only upon request from the outside, and there is no thread.
@@ -200,10 +200,10 @@ If, on the other hand, the server is implemented in a threaded language such as 
 
 The process of cleaning up the database is the following:
 
-* Delete all entries in the credentials table that have the active field set to 0 and the current time greater than or equal to the transaction timeout field. This will free usernames and email addresses for which a sign up process was started but never completed.
-* Delete all entries in the credentials table that have the active field set to 1 and the delete timeout field lesser than the current time. This will remove credentials that where scheduled for deletion. Send confirmation emails for these.
-* Delete corresponding entries in the salts table to remove salts that are no longer used.
-* Clear the transaction code field for all entries in the credentials table that have the active field set to 1 and the transaction timeout field greater than or equal to the current time. This will prevent keeping transaction codes in the database longer than necessary.
+* Delete all entries in the credentials table that have the active field set to 0 and the current time greater than or equal to the transaction timeout field. This will free usernames and email addresses for which a sign up process was started but never completed. Example of a query: `DELETE a.*, b.* FROM credentials a LEFT JOIN salts b ON b.salt = a.salt WHERE a.active = 0 AND a.transaction_timeout <> NULL AND NOW() >= a.transaction_timeout`.
+* Delete all entries in the credentials table that have the active field set to 1 and the delete timeout field lesser than the current time. This will remove credentials that where scheduled for deletion. Send confirmation emails for these. Example of a query: `DELETE a.*, b.* FROM credentials a LEFT JOIN salts b ON b.salt = a.salt WHERE active = 1 AND delete_timeout <> NULL AND NOW() >= delete_timeout`.
+* Delete corresponding entries in the salts table to remove salts that are no longer used (the example queries above will do that).
+* Clear the transaction code field for all entries in the credentials table that have the active field set to 1 and the transaction timeout field greater than or equal to the current time. This will prevent keeping transaction codes in the database longer than necessary.Example of a query: `UPDATE credentials SET transaction_code = NULL, transaction_timeout = NULL WHERE active = 1 AND transaction_timeout <> NULL AND NOW() >= transaction_timeout`.
   
 ### Terminology
 In what follows, terms in bold indicate a specific operation:
