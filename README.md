@@ -1,4 +1,4 @@
-#Sign Up/Sign In Guidelines
+# Sign Up/Sign In Guidelines
 
 The aim of this document is to describe the complete implementation, from the perspective of security, of a system that allows users to sign up for access, and then sign in/sign out. The term guideline is used because what is given here is pseudo code and examples rather than source code.
 
@@ -6,44 +6,44 @@ The system has been in fact implemented as a proof of concept. Here I will expla
 
 I'm not a security expert, don't rely on that. I've done a bit of research and I hope this system is sound, but if you think there is a flow in the logic, you're most definitely welcome to tell me, and I'll try to fix it. Also, if you can provide a link to other guides of this type I'll gladly add them, or just point people to them if they are better than this one.
 
-##The system
+## The system
 Let's define what I mean by this. The system is a computing facility that performs tasks (unspecified here), and has the concept of users. A new user can introduce themselves by mean of a sign up procedure, described below. Once the user is accepted by the system, they can sign in to obtain access to the computing facility, and sign out to release that access. Finally, they can request to be removed from the system.
 
 This is a fairly common scheme, a typical client/server abstraction.
 
-##Terms
-###User
+## Terms
+### User
 A human (presumably) that wants to use the system.
-###Credential
+### Credential
 Information associated to the user that allows the system to recognize a valid access request.
-###Password
+### Password
 A sentence known to the user only. It is their responsability to keep it secret, and if another human requesting access demonstrates they know the password, the system will not be able to make the difference and will grant the request.
-###Database
+### Database
 The storage location for credentials.
-###Client
+### Client
 The software used to provide sign up and sign in information to the system.
-###Server
+### Server
 The software that checks requests and grant them.
-###Username
+### Username
 A name associated to the user, used by the system to communicate wih them.
-###Email address
+### Email address
 Email is a separate mean of communication with the user. The address is the identifier of the user when sending emails to them.
-###Salt
+### Salt
 Binary data created during sign up. This data is unique, and public.
-###Password settings
+### Password settings
 All settings related to the encryption of the password.
-###Question
+### Question
 An optional free text intended to be a question for which only the user knows the answer.
-###Answer
+### Answer
 A sentence known to the user only, expected to be deduced from the question years after they forgot their password.
-###Answer settings
+### Answer settings
 All settings related to the encryption of the answer.
-###Transaction Code
+### Transaction Code
 Random binary data that don't need to be cryptographically secure and has a short validity period.
-###Transaction end
+### Transaction end
 The date after which a transaction code is no longer valid.
   
-##Priorities
+## Priorities
 Securing a system is a compromise, between usability and protection against attacks. For example, ideally a user would not have to provide a password, they would just show up and have their access granted. On the other hand, from the perspective of the system, a simple password is not very safe, particularly if it doesn't have to meet requirements such as minimum length. For a computer, a page-long password is safer than four digits!
 
 Here I want to state what have been my priorities when designing the system. This is essential because it led me to unusual choices, not recommended by other people commenting on the subject.
@@ -54,7 +54,7 @@ That is to say, the number one priority is to make sure only the user knows the 
 In the compromise between usability and security, for signing in, I lean toward the usability side. For example I did not implement two-steps verification. 
 3. The sign up procedure, and other operations related to changing credentials, are secure at the expense of the user if needed. Contrary to signing in, signing up is done once. At that time, I think it's acceptable to expect from the user patience and understanding, and to implement a secure scheme.
 
-##Assumptions
+## Assumptions
 I will assume the following:
 
 + When signing in, the user can provide either their username or their email address. Therefore, I assume uniqueness of both: users can't share either a username or an email address.
@@ -63,10 +63,10 @@ I will assume the following:
 + To sign up, it is necessary and sufficient that the user controls their email address and has access to the internet (they can click links).
 + To change credentials afterward, it is necessary and sufficient that the user can prove they known the password at the time of the change.
 
-##Optional parts
+## Optional parts
 This guideline include some optional parts, indicated as such. One is the use of a secret question/answer challenge to provide additional security when an email address is compromised, the other is the use of an external site for providing crytographically secure random data.
 
-###Secret question/answer challenge
+### Secret question/answer challenge
 Despite the many advices against using a secret question/answer challenge, I consider my implementation reasonably safe and useful. Since it's optional you are free to disagree and to just not implement it.
 
 The idea behind this challenge is that, if the user's email address is compromised and an attacker can at least read emails, they can request to recover a lost password and see the recovery email sent by the server. Armed with the link within, they can change the password, the user name and email address, taking total control over the account.
@@ -75,7 +75,7 @@ In other words, the credential saved so carefully is no safer than the credentia
 
 Implementing it, beside the implementation cost for programmers, could have zero impact on the process from the perspective of the user: they could just leave both the question and answer empty, or fill it with useless values such as foo/foo. It's an additional level of safety left to the user's choice.   
 
-###External source of randomness
+### External source of randomness
 You can use an external source to obtain the [salt](#salt). For example, from https://beacon.nist.gov/home.
 
 Pros:
@@ -90,7 +90,7 @@ Cons:
 
 Whether you implement this or not, you should fall back to a local implementation. I will elaborate on this when describing [sign up](#sign_up).
 
-##Overview
+## Overview
 This section gives an overview of the process of signing up/in/out. With it the reader can quickly figure out if it will fit their needs, or if they want something different, in which case there is no point reading the entire guide.
  
 1. Sign up
@@ -120,7 +120,8 @@ This section gives an overview of the process of signing up/in/out. With it the 
   - The credential is then tagged for deletion and the user signed out.
   - If the user signs in before a grace period, deletion is canceled and the credential returns to normal.
   - After the grace period a confirmation email is sent to the user and the credential is permanently deleted.
-###Optional question/answer challenge
+
+### Optional question/answer challenge
 If this is implemented, the process is modified as follow:
 
 1. Sign up
@@ -136,9 +137,9 @@ If this is implemented, the process is modified as follow:
 1. Deleting credential
   - Requesting to complete the question/answer challenge doesn't make sense in this context. If a user knows the password, they can just change the question and answer, or remove them altogether, before deleting the credential. 
    
-##The guide
+## The guide
 
-###Setting up
+### Setting up
 To get the system ready, we are going to execute the following steps once.
 
 + Obtain a unique ID (UUID).<br>
@@ -196,7 +197,7 @@ The process of cleaning up the database is the following:
 * Delete corresponding entries in the salts table to remove salts that are no longer used.
 * Clear the transaction code field for all entries in the credentials table that have the active field set to 1 and the transaction_end field greater than or equal to the current time. This will prevent keeping transaction codes in the database longer than necessary.
   
-###Terminology
+### Terminology
 In what follows, terms in bold indicate a specific operation:
 
 - **Obtain from User** means showing a form, reading a hardware token, a file, and other means of obtaining that the user provide the requested information. 
@@ -209,7 +210,7 @@ When terms are within parenthesis and separated with semicolons, it means they a
  
 For all steps implying an operation on the database, whether a read or a write, I provide a sample pseudo-code query in SQL.
 
-###Sign up
+### Sign up
 1. Client: **obtain from User** (*username*;*email address*). (For example, from a web form. There can be more information of course, but these are outside the scope of this document)
 1. Client: **send to Server** (*username*;*email address*). 
 1. Server: Perform a database cleanup.
@@ -299,7 +300,7 @@ This section is specific to changing the password, but considerations stated abo
 1. Server: **return to client** success or failure.
   - Failure can be, for example, if the current password doesn't match what's in the database.
 
-###Change email address
+### Change email address
 
 See the [change password](#change_password) section above for considerations regarding changing credential information.
 
@@ -318,7 +319,7 @@ See the [change password](#change_password) section above for considerations reg
   - Note that we don't check at this time if the address is valid. This is because the email must go through actors that we don't control, such as email servers, spam filters and other niceties of the internet. Therefore, the client at this point should display message that looks like this:
 > Check your reception box for the confirmation email. If you did not receive it, it can be due to several causes, for example a spam filter, but one of them is that you may have misspelled the address. The change won't be complete until you see the confirmation email.
 
-###Change username
+### Change username
 
 See the [change password](#change_password) section above for considerations regarding changing credential information.
 
@@ -335,7 +336,7 @@ See the [change password](#change_password) section above for considerations reg
   - Failure can be, for example, if the current password doesn't match what's in the database.
   - Failure can also be that the new username is taken. The server should, if possible, return a specific error for this situation so the client software can display the appropriate message.
 
-###Change question/answer challenge (optional)
+### Change question/answer challenge (optional)
 
 See the [change password](#change_password) section above for considerations regarding changing credential information.
 This section is optional and obviously applies only if the question/answer chanllenge is implemented. 
@@ -352,7 +353,7 @@ This section is optional and obviously applies only if the question/answer chanl
 1. Server: **return to client** success or failure.
   - Failure can be, for example, if the current password doesn't match what's in the database.
 
-###Recovery
+### Recovery
 
 Recovering a credential for which the password has been lost or forgotten is done using the email address. The user, by showing that they control the email address, can change the associated password and sign in using the address and the changed password.
 
@@ -386,11 +387,11 @@ If the optional question/answer challenge is implemented, they will also have to
 1. Server: **return to Client** success or failure.
 1. Client: in case of success, notify the user of their successful recovery. In case of failure, there are several possibilities, like an answer that doesn't match, but also a credential not activated yet, activated more than once, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
 
-###Sign out
+### Sign out
 
 There is nothing that can specified for this operation, it completely depends on the implementation.
 
-###Deleting credentials
+### Deleting credentials
 
 As noted in the [overview](#overview), deleting the account isn't instantaneous. This is not to prevent an attacker having gained temporary control of the credential from being able to delete it. A password (at least) is required to do it, and if the attacker got the password they can do whatever they want. The delay exists as a last-resort safety, in case the user changes their mind before it becomes effective.
 
