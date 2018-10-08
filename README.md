@@ -6,6 +6,31 @@ The system has been in fact implemented as a proof of concept. Here I will expla
 
 I'm not a security expert, don't rely on that. I've done a bit of research and I hope this system is sound, but if you think there is a flow in the logic, you're most definitely welcome to tell me, and I'll try to fix it. Also, if you can provide a link to other guides of this type I'll gladly add them, or just point people to them if they are better than this one.
 
+## Table of Content
+
+- [The system](#the-system)
+- [Terms](#terms)
+- [Priorities](#priorities)
+- [Assumptions](#assumptions)
+- [Optional parts](#optional-parts)
+  - [Secret question/answer challenge](#secret-questionanswer-challenge)
+  - [External source of randomness](#external-source-of-randomness)
+- [Overview](#overview)
+  - [Optional question/answer challenge](#optional-questionanswer-challenge)
+- [The guide](#the-guide)
+  - [Setting up](#setting-up)
+  - [Cleanup](#cleanup)
+  - [Terminology](#terminology)
+  - [Sign up](#sign-up)
+  - [Sign in](#sign-in)
+  - [Change password](#change-password)
+  - [Change email address](#change-email-address)
+  - [Change username](#change-username)
+  - [Change question/answer challenge (optional)](#change-questionanswer-challenge-optional)
+  - [Recovery](#recovery)
+  - [Sign out](#sign-out)
+  - [Deleting credentials](#deleting-credentials)
+
 ## The system
 Let's define what I mean by this. The system is a computing facility that performs tasks (unspecified here), and has the concept of users. A new user can introduce themselves by mean of a sign up procedure, described below. Once the user is accepted by the system, they can sign in to obtain access to the computing facility, and sign out to release that access. Finally, they can request to be removed from the system.
 
