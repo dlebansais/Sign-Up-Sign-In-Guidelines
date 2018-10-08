@@ -172,18 +172,20 @@ The database will be prepared to hold the following information:
 
 | Field Meaning | Field name in pseudo code | Note |
 | --- | --- |--- |
-| The username | username  | set as unique, if the database allows it |
-| The email address | email_address | set as unique, if the database allows it |
-| The salt | salt | |
-| The encrypted password | password | |
-| The password settings | password_settings | |
-| The *active* flag | active | `false` means the credential is not valid, the term *active* comes from the concept of account activation |
-| A transaction code field | transaction_code | |
-| A transaction timeout field | transaction_timeout | |
-| A delete timeout field | delete_timeout | |
-| The question | question | optional |
-| The encrypted secret answer | answer | optional |
-| The answer settings | answer_settings | optional |
+| The username | `username ` | set as unique, if the database allows it |
+| The email address | `email_address` | set as unique, if the database allows it |
+| The salt | `salt` | |
+| The encrypted password | `password` | |
+| The password settings | `password_settings` | |
+| The *active* flag | `active` | `1` for a valid credential, `0` otherwise |
+| A transaction code field | `transaction_code` | |
+| A transaction timeout field | `transaction_timeout` | |
+| A delete timeout field | `delete_timeout` | |
+| The question | `question` | optional |
+| The encrypted secret answer | `answer` | optional |
+| The answer settings | `answer_settings` | optional |
+
+The term *active* comes from the concept of account activation.
 
 - The salts table, recording
 - 
