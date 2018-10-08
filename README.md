@@ -169,20 +169,27 @@ Setting up the software means some requirements must be fullfilled:
 The database will be prepared to hold the following information:
 
 - The credentials table, recording
-  - The username (note: set as unique, if the database allows it)
-  - The email address (note: set as unique, if the database allows it)
-  - The salt
-  - The encrypted password
-  - The password settings
-  - The *active* flag (`false` means the credential is not valid, the term *active* comes from the concept of account activation)
-  - A transaction code field
-  - A transaction end field
-  - A delete date field
-  - The question (optional)
-  - The encrypted secret answer (optional)
-  - The answer settings (optional)
+
+| Field Meaning | Field name in pseudo code | Note |
+| --- | --- |--- |
+| The username | username  | set as unique, if the database allows it |
+| The email address | email_address | set as unique, if the database allows it |
+| The salt | salt | |
+| The encrypted password | password | |
+| The password settings | password_settings | |
+| The *active* flag | active | `false` means the credential is not valid, the term *active* comes from the concept of account activation |
+| A transaction code field | transaction_code | |
+| A transaction timeout field | transaction_timeout | |
+| A delete timeout field | delete_timeout | |
+| The question | question | optional |
+| The encrypted secret answer | answer | optional |
+| The answer settings | answer_settings | optional |
+
 - The salts table, recording
-  - A salt as binary data (note: set as unique, if the database allows it)
+- 
+| Field Meaning  | Field name in pseudo code | Note |
+| --- | --- |--- |
+| A salt as binary data | salt | set as unique, if the database allows it |
     
 ### Cleanup
 In what follows, the server will sometimes "perform a database cleanup" step. This step is necessary, and executed at the specified time, only if the server doesn't use a separate cleanup thread. This is the case if for instance the server is completely implemented in PHP, because the server code is executed only upon request from the outside, and there is no thread.
@@ -191,10 +198,10 @@ If, on the other hand, the server is implemented in a threaded language such as 
 
 The process of cleaning up the database is the following:
 
-* Delete all entries in the credentials table that have the active field set to 0 and the current time greater than or equal to the transaction end field. This will free usernames and email addresses for which a sign up process was started but never completed.
-* Delete all entries in the credentials table that have the active field set to 1 and the delete date field lesser than the current time. This will remove credentials that where scheduled for deletion. Send confirmation emails for these.
+* Delete all entries in the credentials table that have the active field set to 0 and the current time greater than or equal to the transaction timeout field. This will free usernames and email addresses for which a sign up process was started but never completed.
+* Delete all entries in the credentials table that have the active field set to 1 and the delete timeout field lesser than the current time. This will remove credentials that where scheduled for deletion. Send confirmation emails for these.
 * Delete corresponding entries in the salts table to remove salts that are no longer used.
-* Clear the transaction code field for all entries in the credentials table that have the active field set to 1 and the transaction_end field greater than or equal to the current time. This will prevent keeping transaction codes in the database longer than necessary.
+* Clear the transaction code field for all entries in the credentials table that have the active field set to 1 and the transaction timeout field greater than or equal to the current time. This will prevent keeping transaction codes in the database longer than necessary.
   
 ### Terminology
 In what follows, terms in bold indicate a specific operation:
@@ -231,11 +238,11 @@ Repeat until the server has obtained a unique *salt*.<br>
   - Using additional data to indicate this is a password hash, we ensure that if the system uses the same salt and UUID for other purposes, the resulting encrypted hash will be different than the encrypted password.
 10. Client: optionally use the PHF to hash the answer ans create *encrypted answer*, for example with `<encrypted answer> = Argon2d(<password>, <salt>, UUID, Additional Data For Answer, <answer settings>);`. Note that additional data for the answer must be different than for the password.
 11. Client: **send to Server** (*username*;*email address*;*salt*;*encrypted password*;*password settings*) or instead, optionally (*username*;*email address*;*salt*;*encrypted password*;*password settings*;question;*encrypted answer*;*answer settings*).
-12. Server: Create a *transaction code* with the chosen validity duration, and calculate the *transaction end* date at which the sign up request is rejected.
+12. Server: Create a *transaction code* with the chosen validity duration, and calculate the *transaction timeout* at which the sign up request is rejected.
   - The transaction code must sufficiently unpredictable that an attacker cannot generate fake codes. If they could, they would be able to sign up with a fake address they don't control, then generate a link and try to activate the account with it. As long as a transaction code cannot be generated by attackers, the system is safe.
   - For this purpose, it is enough to use random data and mix it with the username, which is a known unique value (assuming the operation described in the next step is successful, but that's the point).
   - The suggested approach is create a string of N digits obtained from a random number generator (for example `openssl_random_pseudo_bytes()` in the case of PHP) where N is the length chosen during setup, append the username to it and hash the result. Since we are using Argon2 for password hashing, a logical choice is BLAKE2.
-13. Server: add credential information, the *transaction code* and *transaction end* to the credential database. For example with a `INSERT INTO credentials(username, email_address, salt, encrypted_password, password_settings, active, transaction_code, transaction_end) VALUES (<username>, <email address>, <salt>, <encrypted password>, <password setting>, 0, <transaction code>, <transaction end>);` query (add *question*, *encrypted answer* and *answer settings* as appropriate). This query can fail if two users try to sign up with the same username (or email address, but that's unlikely) roughly at the same time.
+13. Server: add credential information, the *transaction code* and *transaction timeout* to the credential database. For example with a `INSERT INTO credentials(username, email_address, salt, encrypted_password, password_settings, active, transaction_code, transaction_timeout) VALUES (<username>, <email address>, <salt>, <encrypted password>, <password setting>, 0, <transaction code>, <transaction end>);` query (add *question*, *encrypted answer* and *answer settings* as appropriate). This query can fail if two users try to sign up with the same username (or email address, but that's unlikely) roughly at the same time.
 14. Server: **return to Client** success or failure.
   - In case of failure, the client could just apologize, repeat the process starting from step 1, and then tell one of the users that their username is now taken.
   - In case of success, display a message telling the user an email has been sent with a link, and clicking the link is required to finish signing up. Also tell the user the link is valid for a limited time. 
@@ -245,15 +252,15 @@ Repeat until the server has obtained a unique *salt*.<br>
   - Note that since the process has no control over how many times the user clicks the link, if they do it more than once there should be some ways to tell them the link is longer valid.
 16. Client: **obtain from User** (*password*), or instead, optionally, display the question part of the challenge and obtain (*password*;*answer*).
 17. Client: use the PHF to hash the password and create *encrypted password*. Optionally, also create *encrypted answer*.
-18. Client: **send to Server** (*username*;*transaction code*;*encrypted password*;*password settings*) or (*username*;*transaction code*;*encrypted password*;*encrypted answer*;*answer settings*).
+18. Client: **send to Server** (*username*;*transaction code*;*encrypted password*;*password settings*) or (*username*; *transaction code*; *encrypted password*; *encrypted answer*; *answer settings*).
 19. Server: Perform a database cleanup.
 20. Server: complete the signup by matching the request with the previous record in the database. The provided information has the following requirements:
   - *username*, *transaction code*, *encrypted password*, *password settings* and optionally *encrypted answer* and *answer settings* must match.
   - The active flag must be initially 0, to prevent activating more than once.
-  - The current time must be lesser than the *transaction end* date.
-  - A successful activation must erase *transaction code* and *transaction end* from the database:  We don't want to keep outdated transaction codes.
-  - Example of a database operation: `UPDATE credentials SET active = 1, transaction_code = NULL, transaction_end = NULL WHERE username = '<username>' AND password = '<encrypted_password>' AND password_settings = '<password settings>' AND active = 0 AND transaction_code = '<transaction code>' AND NOW() < transaction_end;`
-  - Same example with the optional question/answer challenge implemented: `UPDATE credentials SET active = 1, transaction_code = NULL, transaction_end = NULL WHERE username = '<username>' AND password = '<encrypted_password>' AND password_settings = '<password settings>' AND answer = '<encrypted answer>' AND answer_settings = '<answer settings>' AND active = 0 AND transaction_code = '<transaction code>' AND NOW() < transaction_end;`
+  - The current time must be lesser than the *transaction timeout*.
+  - A successful activation must erase *transaction code* and *transaction timeout* from the database:  We don't want to keep outdated transaction codes.
+  - Example of a database operation: `UPDATE credentials SET active = 1, transaction_code = NULL, transaction_timeout = NULL WHERE username = '<username>' AND password = '<encrypted_password>' AND password_settings = '<password settings>' AND active = 0 AND transaction_code = '<transaction code>' AND NOW() < transaction_timeout;`
+  - Same example with the optional question/answer challenge implemented: `UPDATE credentials SET active = 1, transaction_code = NULL, transaction_timeout = NULL WHERE username = '<username>' AND password = '<encrypted_password>' AND password_settings = '<password settings>' AND answer = '<encrypted answer>' AND answer_settings = '<answer settings>' AND active = 0 AND transaction_code = '<transaction code>' AND NOW() < transaction_timeout;`
 21. Server: **return to Client** success or failure.
 22. Client: in case of success, notify the user of their successful sign up. In case of failure, there are several possibilities, like a password or answer that doesn't match, but also a credential already activated, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
 
@@ -272,8 +279,8 @@ Repeat until the server has obtained a unique *salt*.<br>
   - How access is granted is not specified here, it depends on how the system will proceed from there. Typically, the server would generate a session ID that allows to read/write other databases.  
   - In the example query above, note the `, ...` ellipsis. It means "...and other fields", but it does **NOT** mean any of the encrypted fields, such as encrypted_password. These must never be selected. In particular, do **NOT** use a query starting with `SELECT * FROM credentials WHERE ...`. The reason is that it could leak the password, something we can always avoid.
   - *Username*, *salt* and *password settings* are explicity selected so they can be returned to the client.
-11. Server: in case of success, cancel any scheduled deletion, for example with a `UPDATE credentials SET delete_date = NULL WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1 AND delete_date <> NULL;` query. Note that, since we have cleaned up the database before starting looking for the credential, the delete operation is properly canceled. However, in case of asynchronous cleanup (i.e. from a separate thread), care must be taken to synchronize the sign in thread and the cleanup thread, otherwise the credential could be deleted after step 10 but before step 11.
-12. Server: **return to client** either success or failure, with in case of success the *username*, *salt*, *password settings* and whatever is necessary to continue using the system as a signed-in user. If the delete date field was cleared in the database, it might be a good idea to also tell the client, to notify the user that their scheduled delete operation has been canceled.   
+11. Server: in case of success, cancel any scheduled deletion, for example with a `UPDATE credentials SET delete_timeout = NULL WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1 AND delete_timeout <> NULL;` query. Note that, since we have cleaned up the database before starting looking for the credential, the delete operation is properly canceled. However, in case of asynchronous cleanup (i.e. from a separate thread), care must be taken to synchronize the sign in thread and the cleanup thread, otherwise the credential could be deleted after step 10 but before step 11.
+12. Server: **return to client** either success or failure, with in case of success the *username*, *salt*, *password settings* and whatever is necessary to continue using the system as a signed-in user. If the delete timeout field was cleared in the database, it might be a good idea to also tell the client, to notify the user that their scheduled delete operation has been canceled.   
 
 ### Change password
 
@@ -357,8 +364,8 @@ If the optional question/answer challenge is implemented, they will also have to
   
 1. Client: **obtain from User** (*email address*). Note that the user isn't signed in at this time, and the client software knows nothing about them.
 2. Client: **send to Server** (*email address*).
-3. Server: create a *transaction code* with the chosen validity duration, and calculate the *transaction end* date at which the recovery request will be rejected. See step 12 of the [sign up](#sign-up) section for details about the transaction code.
-4. Server: update the *transaction code* and *transaction end* date in the credential database. For example with a `UPDATE credentials SET transaction_code = '<transaction_code>', transaction_end = '<transaction_end>' WHERE email_address = '<email address>' AND active = 1;` query, or, if the optional question/answer challenge is implemented, the `UPDATE credentials SET transaction_code = '<transaction_code>', transaction_end = '<transaction_end>' WHERE email_address = '<email address>' AND active = 1 AND (NOT (question IS NULL));` query.
+3. Server: create a *transaction code* with the chosen validity duration, and calculate the *transaction timeout* at which the recovery request will be rejected. See step 12 of the [sign up](#sign-up) section for details about the transaction code.
+4. Server: update the *transaction code* and *transaction timeout* in the credential database. For example with a `UPDATE credentials SET transaction_code = '<transaction_code>', transaction_timeout = '<transaction timeout>' WHERE email_address = '<email address>' AND active = 1;` query, or, if the optional question/answer challenge is implemented, the `UPDATE credentials SET transaction_code = '<transaction_code>', transaction_timeout = '<transaction timeout>' WHERE email_address = '<email address>' AND active = 1 AND (NOT (question IS NULL));` query.
   - This query can fail if either the email address doesn't exist, or the question is empty.
   - If the question is empty, it means the user explicitely denied the possibility of recovery.
 5. Server: **return to Client** success or failure.
@@ -376,10 +383,10 @@ If the optional question/answer challenge is implemented, they will also have to
 13. Server: complete the recovery by looking for a match of the request in the database. The provided information has the following requirements:
   - *username*, *transaction code*, and optionally *encrypted answer* and *answer settings* must match.
   - The active flag must be 1.
-  - The current time must be lesser than the *transaction end* date.
-  - A successful recovery must erase *transaction code* and *transaction end* from the database.
-  - The delete date field should also be cleared, to avoid the corner case where a recovery and deletion happen at the same time. 
-  - Example of a database operation: `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>', transaction_code = NULL, transaction_end = NULL, delete_date = NULL WHERE username = '<username>' AND active = 1 AND transaction_code = '<transaction_code>' AND (NOW() < transaction_end);`. If the optional question/answer challenge is implemented, the query would be `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>', transaction_code = NULL, transaction_end = NULL, delete_date = NULL WHERE username = '<username>' AND answer = '<encrypted answer>' AND answer_settings = '<answer settings>' AND (NOT (question is NULL)) AND active = 1 AND transaction_code = '<transaction_code>' AND (NOW() < transaction_end);`.
+  - The current time must be lesser than the *transaction timeout*.
+  - A successful recovery must erase *transaction code* and *transaction timeout* from the database.
+  - The delete timeout field should also be cleared, to avoid the corner case where a recovery and deletion happen at the same time. 
+  - Example of a database operation: `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>', transaction_code = NULL, transaction_timeout = NULL, delete_timeout = NULL WHERE username = '<username>' AND active = 1 AND transaction_code = '<transaction_code>' AND (NOW() < transaction_timeout);`. If the optional question/answer challenge is implemented, the query would be `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>', transaction_code = NULL, transaction_timeout = NULL, delete_timeout = NULL WHERE username = '<username>' AND answer = '<encrypted answer>' AND answer_settings = '<answer settings>' AND (NOT (question is NULL)) AND active = 1 AND transaction_code = '<transaction_code>' AND (NOW() < transaction_timeout);`.
 14. Server: **return to Client** success or failure.
 15. Client: in case of success, notify the user of their successful recovery. In case of failure, there are several possibilities, like an answer that doesn't match, but also a credential not activated yet, activated more than once, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
 
@@ -399,7 +406,7 @@ As noted in the [overview](#overview), deleting the account isn't instantaneous.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
   - The credential must be active.
   - The email address can be obtained for example with a `SELECT email_address WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;` query.
-  - Tagging the credential for deletion can be done for example with a `UPDATE credentials SET delete_date = <delete date> WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;` query.
+  - Tagging the credential for deletion can be done for example with a `UPDATE credentials SET delete_timeout = <delete timeout> WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;` query.
 5. Server: in case of success, send a warning message at the email address.
 6. Server: **return to client** success or failure.
   - Failure can be, for example, if the current password doesn't match the database credential.
