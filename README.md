@@ -44,7 +44,7 @@ Random binary data that don't need to be cryptographically secure and has a shor
 The date after which a transaction code is no longer valid.
   
 ## Priorities
-Securing a system is a compromise, between usability and protection against attacks. For example, ideally a user would not have to provide a password, they would just show up and have their access granted. On the other hand, from the perspective of the system, a simple password is not very safe, particularly if it doesn't have to meet requirements such as minimum length. For a computer, a page-long password is safer than four digits!
+Securing a system is a trade-off, between usability and protection against attacks. For example, ideally a user would not have to provide a password, they would just show up and have their access granted. On the other hand, from the perspective of the system, a simple password is not very safe, particularly if it doesn't have to meet requirements such as minimum length. For a computer, a page-long password is safer than four digits!
 
 Here I want to state what have been my priorities when designing the system. This is essential because it led me to unusual choices, not recommended by other people commenting on the subject.
 
@@ -61,7 +61,7 @@ I will assume the following:
 + Username and email address are not kept secret. They are not public in the sense that the system doesn't provide a list of registered usernames or email addresses, but any attacker can check whether a username, or an email address, is taken, by simply trying to sign up with it.
 + The user can change the username, the email address and the password they use after they have signed in. However, the system is allowed to be more secure than fast for this, in the same way than during sign up.
 + To sign up, it is necessary and sufficient that the user controls their email address and has access to the internet (they can click links).
-+ To change credentials afterward, it is necessary and sufficient that the user can prove they known the password at the time of the change.
++ To change credentials afterward, it is necessary and sufficient that the user can prove they know the password at the time of the change.
 
 ## Optional parts
 This guideline include some optional parts, indicated as such. One is the use of a secret question/answer challenge to provide additional security when an email address is compromised, the other is the use of an external site for providing crytographically secure random data.
@@ -69,9 +69,9 @@ This guideline include some optional parts, indicated as such. One is the use of
 ### Secret question/answer challenge
 Despite the many advices against using a secret question/answer challenge, I consider my implementation reasonably safe and useful. Since it's optional you are free to disagree and to just not implement it.
 
-The idea behind this challenge is that, if the user's email address is compromised and an attacker can at least read emails, they can request to recover a lost password and see the recovery email sent by the server. Armed with the link within, they can change the password, the user name and email address, taking total control over the account.
+The idea behind this challenge is that, if the user's email address is compromised and an attacker can at least read emails, they can request to recover a lost password and see the recovery email sent by the server. Armed with the link within, they can change the password, the user name and the email address, taking total control over the account.
 
-In other words, the credential saved so carefully is no safer than the credential used by the email server. The later might be good enough, or it might be bad. If you don't trust users to choose properly managed email servers, having an additional verification steps might be a good idea.
+In other words, the credential saved so carefully is no safer than the credential used by the email server. The later might be good enough, or it might be bad. If you don't trust users to choose properly managed email servers, having an additional verification step might be a good idea.
 
 Implementing it, beside the implementation cost for programmers, could have zero impact on the process from the perspective of the user: they could just leave both the question and answer empty, or fill it with useless values such as foo/foo. It's an additional level of safety left to the user's choice.   
 
@@ -88,7 +88,7 @@ Cons:
 - Not guaranteed to be available and accessible.
 - Not guaranteed to provide a different value for each request.
 
-Whether you implement this or not, you should fall back to a local implementation. I will elaborate on this when describing [sign up](#sign_up).
+Whether you implement this or not, you should fall back to a local implementation. I will elaborate on this when describing [sign up](#sign-up).
 
 ## Overview
 This section gives an overview of the process of signing up/in/out. With it the reader can quickly figure out if it will fit their needs, or if they want something different, in which case there is no point reading the entire guide.
@@ -98,25 +98,25 @@ This section gives an overview of the process of signing up/in/out. With it the 
   - The server checks if the username or email address is taken.
   - If not, the password is encrypted and an email is sent to the provided address with a link to click.
   - When the user has received the email, clicked the link and confirmed the password, the sign up step is complete.
-1. Sign in
-  - The user provide a username or email, and a password.
-  - The password is encrypted, and if it matches a known credential, by username or email, access is granted.
-1. Changing credential
-  - The option to change credential is available only to signed in users.
-  - To change the username, the email or the pasword, the user is asked to enter their current password and the modified information.
-  - The password is encrypted and if it matches the current credential the change is applied
-1. Recovery
+2. Sign in
+  - The user provide a username or email address, and a password.
+  - The password is encrypted, and if it matches a known credential, by username or email address, access is granted.
+3. Changing credential
+  - The option to change credential is available only to signed-in users.
+  - To change the username, the email address or the password, the user is asked to enter their current password and the modified information.
+  - The password is encrypted and if it matches the current credential the change is applied.
+4. Recovery
   - If the user has lost the password, they can request a recovery.
-  - It starts by asking for an email address.
+  - It begins by asking for an email address.
   - If the email address matches one of the known addresses, an email is sent to this address with a link.
   - If the link is clicked, the user can provide a new password. This new password is encrypted and replaces the old password.
   - From there, the user can retry login in since that they know the email and password.
-1. Sign out
-  - This is a simple operation that can be done by any signed in user.
-1. Deleting credential
-  - The user must be signed in
+5. Sign out
+  - This is a simple operation that can be done by any signed-in user.
+6. Deleting credential
+  - The user must be signed in.
   - To delete credential, they are asked to enter their current password.
-  - The password is encrypted and if it matches an email is sent with a warning message.
+  - The password is encrypted, and if it matches the recorded password an email is sent with a warning message.
   - The credential is then tagged for deletion and the user signed out.
   - If the user signs in before a grace period, deletion is canceled and the credential returns to normal.
   - After the grace period a confirmation email is sent to the user and the credential is permanently deleted.
@@ -127,15 +127,14 @@ If this is implemented, the process is modified as follow:
 1. Sign up
   - In addition to other information, the user can provide a question and the answer. The answer is encrypted.
   - The user can choose to not provide them, but this will prevent them from recovering if they loose their password. They can instead provide a meaningless challenge like foo/foo, in which case the challenge doesn't protect their credential.
-1. Changing credential
-  - The question/answer challenge can be changed like anything else   
+2. Changing credential
+  - The question/answer challenge can be changed like anything else.   
   - The user is asked to enter their current password and the new question and answer.
-  - The password is encrypted (as well as the new answer) and if it matches the current credential the change is applied.
-1. Recovery
+  - The password is encrypted (as well as the new answer) and if it matches the current password the change is applied.
+3. Recovery
   - After clicking the link sent in the email, in addition to a new password the user can see the question and must provide an answer.
-  - The answer is encrypted, and if it matches then the new password -also encrypted- replaces the old one.
-1. Deleting credential
-  - Requesting to complete the question/answer challenge doesn't make sense in this context. If a user knows the password, they can just change the question and answer, or remove them altogether, before deleting the credential. 
+  - The answer is encrypted, and if it matches the recorded answer then the new password -also encrypted- replaces the old one.
+4. Deleting credential: requesting to complete the question/answer challenge doesn't make sense in this context. If a user knows the password, they can just change the question and answer, or remove them altogether, before deleting the credential. 
    
 ## The guide
 
@@ -157,14 +156,14 @@ If you choose another PHF, I ask it meets the following requirements:
 This length is the strength of your encryption. However, if an attacker just focus on finding the password using brute force, a length much larger than the average user's password length does not offer more protection. Because of this, the length just need to be *sufficient relatively to passwords*. Authors of Argon2 [recommend](https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf) (section 9) using 128 bits (16 bytes) of data.
 - Choose additional data.<br>
 This will depend of the complexity of your system, and how many different credential it's supposed to hold. The additional data piece is here to specify that the PHF encodes a password dedicated to user sign in. For the rest of this document, I'll assume it's the simple "password" string. If you implement the optional question/answer challenge, you can choose "answer" for the answer.
-- Choose an transaction validity duration.<br>
-This is how long an transaction is valid before a user must retry if they have not completed it. A typical duration is one day.
+- Choose a transaction validity duration.<br>
+This is how long a transaction (for example, signing up) is valid before a user must retry if they have not completed it. A typical duration is one day.
 
 Setting up the software means some requirements must be fullfilled:
 
 - The client must be able to execute custom code in some reasonably safe environment. For a web browser, for instance, that means enabling JavaScript or other technologies. We will assume the client is not subject to attacks trying to capture the password as the user is entering it, such as keyloggers. They are outside the scope of this document. If this could be a concern then the choice of the 'd' variation of Argon2 must be re-examined.
 - The server is communicating with the client through a secure channel, for example using the HTTPS protocol. If this is not the case, and an attacker can eavesdrop on the communication, or play man-in-the-middle, they can easily fake a user and sign in to the system without knowing the password. However, priority number one is preserved, and they will not know what the password is.
-- The server software is reasonably secure, meaning that it has the same level of protection than the communication channel mentioned above: if compromised, an attacker could could sign in, but they won't be able to get the password.
+- The server software is reasonably secure, meaning that it has the same level of protection than the communication channel mentioned above: if compromised, an attacker could sign in, but they won't be able to get the password.
 - The dabase is secure, for example because it's located on dedicated hardware in a safe place. The channel of communication between the server and the database (if not operating on the same hardware) must also be secure. Note that even if the database is compromised and an attacker obtains the list of users with their password, they will have the hardest time exploiting it, as this information is encrypted and cannot be reused on other systems.
 
 The database will be prepared to hold the following information:
@@ -185,7 +184,7 @@ The database will be prepared to hold the following information:
 - The salts table, recording
   - A salt as binary data (note: set as unique, if the database allows it)
     
-###Cleanup
+### Cleanup
 In what follows, the server will sometimes "perform a database cleanup" step. This step is necessary, and executed at the specified time, only if the server doesn't use a separate cleanup thread. This is the case if for instance the server is completely implemented in PHP, because the server code is executed only upon request from the outside, and there is no thread.
 
 If, on the other hand, the server is implemented in a threaded language such as C++ or Python, the cleanup can happen asynchronously and the "perform a database cleanup" step can be ignored.
@@ -211,17 +210,15 @@ When terms are within parenthesis and separated with semicolons, it means they a
 For all steps implying an operation on the database, whether a read or a write, I provide a sample pseudo-code query in SQL.
 
 ### Sign up
-1. Client: **obtain from User** (*username*;*email address*). (For example, from a web form. There can be more information of course, but these are outside the scope of this document)
-1. Client: **send to Server** (*username*;*email address*). 
-1. Server: Perform a database cleanup.
-1. Server: check if either *username* or *email address* is already used. (For example, perfom a `SELECT COUNT(username) FROM credentials WHERE username='<username>' OR email_address='<email address>';` query.
+1. Client: **obtain from User** (*username*; *email address*). (For example, from a web form. There can be more information of course, but that's outside the scope of this document)
+1. Client: **send to Server** (*username*; *email address*). 
+1. Server: perform a database cleanup.
+1. Server: check if either *username* or *email address* is already used. (For example, perfom a `SELECT COUNT(username) FROM credentials WHERE username='<username>' OR email_address='<email address>';` query).
 1. Server: if either is already used, **return to Client** an error.
-1. Server: otherwise obtain a *salt*: cryptographically secure random binary data of the chosen length (in the Setting up section).
+1. Server: otherwise obtain a *salt*: cryptographically secure random binary data of the chosen length (in the [Setting up](#setting-up) section).
 Obtaining a salt is implementation dependent. For example, in PHP you could use the `openssl_random_pseudo_bytes()` function.
-Once you have a candidate salt, you can check for its uniqueness in the database, for example with a `INSERT INTO salts SET salt VALUES (<candidate>) ON DUPLICATE KEY UPDATE salt=salt;` query. This will both check for uniqueness and save it, turning this into an atomic operation.<br>
-<br>
+Once you have a candidate salt, you can check for its uniqueness in the database, for example with a `INSERT INTO salts SET salt VALUES (<candidate salt>) ON DUPLICATE KEY UPDATE salt=salt;` query. This will both check for uniqueness and save it, turning this into an atomic operation.<br>
 Repeat until the server has obtained a unique *salt*.<br>
-<br>
 1. Server: **return to client** (*salt*).
 1. Client: **obtain from User** (*password*), or instead, optionally, (*password*;*question*;*answer*).
   - Note that at this stage asking the user to confirm their password is not needed, because they will eventually have to enter it again at a later stage.
@@ -260,63 +257,62 @@ Repeat until the server has obtained a unique *salt*.<br>
 1. Server: **return to Client** success or failure.
 1. Client: in case of success, notify the user of their successful sign up. In case of failure, there are several possibilities, like a password or answer that doesn't match, but also a credential already activated, or the validity period elapsed. Identifying the reason and being able to help the user fix it depends on the implementation, and won't be specified here. 
 
-###Sign in
+### Sign in
 
 1. Client: **obtain from User** (*identifier*). The identifier can be either the username or email address.
-1. Client: **send to Server** (*identifier*). 
-1. Server: perform a database cleanup.
-1. Server: check if *identifier* is a match for any active credential, by username or email address. If it is, get the associated *salt* and *password settings*. (For example, perfom a `SELECT salt, password_settings FROM credentials WHERE active=1 AND (username='<identifier>' OR email_address='<identifier>');` query).
-1. Server: **return to client** either success and (*salt*;*password settings*), or failure.
-1. Client: in case of failure, return to the first step.
-1. Client: otherwise, **obtain from User** (*password*).
-  - Similarly to sign up, the username and password could be in the same form, but ideally the client software asks for the password separately. 
-2. Client: encrypt the password, using the user-provided value and server-provided salt and settings (see step 9 of sign up).
-1. Client: **send to Server** (*identifier*;*encrypted password*;*password settings*). 
-1. Server: check if the credential is a match for any active credential, by username or email address. If it is, grant access. (For example, perfom a `SELECT username, salt, password_settings, ... FROM credential WHERE active=1 AND password='<encrypted password>' AND password_settings='<password settings>' AND (username='<identifier>' OR email_address='<identifier>');` query).
+2. Client: **send to Server** (*identifier*). 
+3. Server: perform a database cleanup.
+4. Server: check if *identifier* is a match for any active credential, by username or email address. If it is, get the associated *salt* and *password settings*. (For example, perfom a `SELECT salt, password_settings FROM credentials WHERE active = 1 AND (username = '<identifier>' OR email_address = '<identifier>');` query).
+5. Server: **return to client** either success and (*salt*; *password settings*), or failure.
+6. Client: in case of failure, return to the first step.
+7. Client: otherwise, **obtain from User** (*password*). Similarly to sign up, the username and password could be in the same form, but ideally the client software asks for the password separately. 
+8. Client: encrypt the password, using the user-provided value and server-provided salt and settings (see step 9 of sign up).
+9. Client: **send to Server** (*identifier*; *encrypted password*; *password settings*). 
+10. Server: check if the credential is a match for any active credential, by username or email address. If it is, grant access. (For example, perfom a `SELECT username, salt, password_settings, ... FROM credentials WHERE active = 1 AND password = '<encrypted password>' AND password_settings = '<password settings>' AND (username = '<identifier>' OR email_address = '<identifier>');` query).
   - How access is granted is not specified here, it depends on how the system will proceed from there. Typically, the server would generate a session ID that allows to read/write other databases.  
-  - In the example query above, note the `, ...` ellipsis. It means "...and other fields", but it does **NOT** mean any of the encrypted fields, such as encrypted_password. These must never be selected. In particular, do **NOT** use a query starting with `SELECT * FROM credential WHERE ...`. The reason is that it could leak the password, something we can always avoid.
+  - In the example query above, note the `, ...` ellipsis. It means "...and other fields", but it does **NOT** mean any of the encrypted fields, such as encrypted_password. These must never be selected. In particular, do **NOT** use a query starting with `SELECT * FROM credentials WHERE ...`. The reason is that it could leak the password, something we can always avoid.
   - *Username*, *salt* and *password settings* are explicity selected so they can be returned to the client.
-1. Server: in case of success, cancel any scheduled deletion, for example with a `UPDATE credentials SET delete_date = NULL WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1 AND delete_date <> NULL;` query.
-1. Server: **return to client** either success or failure, with in case of success the *username*, *salt*, *password settings* and whatever is necessary to continue using the system as a signed in user. If the delete date field was cleared in the database, it might be a good idea to also tell the client, to notify the user that their scheduled delete account operation has been canceled.   
+11. Server: in case of success, cancel any scheduled deletion, for example with a `UPDATE credentials SET delete_date = NULL WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1 AND delete_date <> NULL;` query. Note that, since we have cleaned up the database before starting looking for the credential, the delete operation is properly canceled. However, in case of asynchronous cleanup (i.e. from a separate thread), care must be taken to synchronize the sign in thread and the cleanup thread, otherwise the credential could be deleted after step 10 but before step 11.
+12. Server: **return to client** either success or failure, with in case of success the *username*, *salt*, *password settings* and whatever is necessary to continue using the system as a signed-in user. If the delete date field was cleared in the database, it might be a good idea to also tell the client, to notify the user that their scheduled delete operation has been canceled.   
 
-###Change password
+### Change password
 
-For all change of credential information, it is expected that the user is already signed in. However, it's a common practice to allow users to stay signed in over sessions by allowing them to keep the session token. Even if it was required from users to explicitely sign in every time they want to work with the system, they could still take a short break and leave their computer accessible by others with while the session is active.
+For all change of credential information, it is expected that the user is already signed in. However, it's a common practice to allow users to stay signed in over sessions by allowing them to keep the session token. Even if it was required from users to explicitely sign in every time they want to work with the system, they could still take a short break and leave their computer accessible by others while the session is active.
 
 For these reasons, it must be required that the user enter their password any time they want to change part of their credential information: username, password, or email address.
 
 This section is specific to changing the password, but considerations stated above are also valid for other changes.
 
-1. Client: **obtain from User** (*password*;*new password*).
+1. Client: **obtain from User** (*password*; *new password*).
   - Since there will be no other opportunities for the user to confirm the new password, it's a good idea to ask them to type it twice at this stage, and verify the two versions are equal.
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-1. Client: encrypt the old and new passwords, using the user-provided values (see step 9 of sign up).
+2. Client: encrypt the old and new passwords, using user-provided values (see step 9 of sign up).
   - This section doesn't cover it, but if for some reason password settings had to be changed, it would be the right time to do it. In what follows, we will therefore consider *password settings* and *new password settings* to be different. In practice, the client software will just reuse old settings for the new password. 
-1. Client: **send to Server** (*username*;*encrypted password*;*password settings*;*encrypted new password*;*new password settings*). 
-1. Server: perform a conditional replacement of the old password and old password settings with the new ones.
+3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *encrypted new password*; *new password settings*). 
+4. Server: perform a conditional replacement of the old password and old password settings with the new ones.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
   - The credential must be active.
   - This is done with a query similar to `UPDATE credentials SET password = '<encrypted new password>', password_settings = '<new password settings>' WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;`.
-1. Server: **return to client** success or failure.
-  - Failure can be, for example, if the current password doesn't match what's in the database.
+5. Server: **return to client** success or failure.
+  - Failure can be, for example, if the current password doesn't match the database credential.
 
 ### Change email address
 
-See the [change password](#change_password) section above for considerations regarding changing credential information.
+See the [change password](#change-password) section above for considerations regarding changing credential information.
 
-1. Client: **obtain from User** (*password*;*new email address*).
+1. Client: **obtain from User** (*password*; *new email address*).
   - A confirmation email will be sent to the new address. Therefore, it is not necessary to ask the user to confirm the address in other ways, such as entering it twice.
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-1. Client: encrypt the password, using the user-provided value (see step 9 of sign up).
-1. Client: **send to Server** (*username*;*encrypted password*;*password settings*;*new email address*). 
-1. Server: perform a conditional replacement of the email address with the new one.
+2. Client: encrypt the password, using the user-provided value (see step 9 of sign up).
+3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *new email address*). 
+4. Server: perform a conditional replacement of the email address with the new one.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
   - The credential must be active.
   - This is done with a query similar to `UPDATE credentials SET email_address = '<new email address>' WHERE username = '<username>' AND password = '<encrypted password>' AND password_settings = '<password settings>' AND active = 1;`.
-1. Server: in case of success, send a confirmation email at the new address.
-1. Server: **return to client** success or failure.
-  - Failure can be, for example, if the current password doesn't match what's in the database.
-  - Note that we don't check at this time if the address is valid. This is because the email must go through actors that we don't control, such as email servers, spam filters and other niceties of the internet. Therefore, the client at this point should display message that looks like this:
+5. Server: in case of success, send a confirmation email at the new address.
+6. Server: **return to client** success or failure.
+  - Failure can be, for example, if the current password doesn't match the database credential.
+  - Note that we don't check at this time if the address is valid. This is because the email must go through actors that we don't control, such as email servers, spam filters and other niceties of the internet. Therefore, the client at this point should display a message that looks like this:
 > Check your reception box for the confirmation email. If you did not receive it, it can be due to several causes, for example a spam filter, but one of them is that you may have misspelled the address. The change won't be complete until you see the confirmation email.
 
 ### Change username
