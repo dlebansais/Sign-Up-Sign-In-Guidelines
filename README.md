@@ -356,7 +356,7 @@ See the [change password](#change-password) section above for considerations reg
 1. Client: **obtain from User** (*password*; *new username*).
   - Since the new username can be displayed in plain text and will take effect immediately, there is no need to confirm it, for example by entering it twice.
   - Because we require the user to be already signed in, *username*, *salt* and *password settings* are known to the client software.
-2. Client: encrypt the password, using the user-provided value (see step 9 of [sign up](#sign-up)). Similarly to [change password](#change-password), it is possible to change answer settings for the new answer, but here we will assume they are just a copy of the old settings.
+2. Client: encrypt the password, using the user-provided value (see step 9 of [sign up](#sign-up)).
 3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *new username*). 
 4. Server: perform a conditional replacement of the username with the new one.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
@@ -374,7 +374,7 @@ This section is optional and obviously applies only if the question/answer chall
 1. Client: **obtain from User** (*password*; *new question*; *new answer*).
   - Since there will be no other opportunities for the user to confirm the new answer, it's a good idea to ask them to type it twice at this stage, and verify the two versions are equal.
   - Because we require the user to be already signed in, *username*, *salt*, *password settings* and *answer settings* are known to the client software.
-2. Client: encrypt the password and new answer, using user-provided values (see step 9 of [sign up](#sign-up)).
+2. Client: encrypt the password and new answer, using user-provided values (see step 9 of [sign up](#sign-up)). Similarly to [change password](#change-password), it is possible to change answer settings for the new answer, but here we will assume they are just a copy of the old settings.
 3. Client: **send to Server** (*username*; *encrypted password*; *password settings*; *new question*; *encrypted new answer*; *new answer settings*). 
 4. Server: perform a conditional replacement of the question and answer with the new ones.
   - The *username*, *encrypted password* and *password settings* must obviously match what's in the database.
